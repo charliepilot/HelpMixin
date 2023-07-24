@@ -1,0 +1,9 @@
+# Intellij ignores
+.idea/
+**/*.iml
+
+# Virtual envirnoment
+venv/
+
+# Jupyter
+**/*.ipynb
