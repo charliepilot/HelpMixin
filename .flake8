@@ -1,0 +1,2 @@
+[flake8]
+exclude = .idea, venv, *.gitignore, *.iml, *.ipynb
