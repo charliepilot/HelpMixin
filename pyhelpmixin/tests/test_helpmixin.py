@@ -1,5 +1,5 @@
+import os
 import unittest
-from typing import Dict, Tuple, List
 
 from pyhelpmixin.help_mixin import HelpMixin
 
@@ -8,14 +8,31 @@ class HelpMixinTestCustomDefaultMsg(HelpMixin):
     HELP_DEFAULT_MESSAGE = "Hello {class_name}"
 
 
-class HelpMixinTestCustomFormat(HelpMixin):
+class HelpMixinTestMethod(HelpMixin):
     """
-    Hello, {name}.  My name is {class_name}. {}
+    Hello {}, My name is {class_name}
     """
 
-    @classmethod
-    def get_help_text_custom_format(cls) -> Tuple[List[str], Dict[str, str]]:
-        return ["Best regards"], {"name": "world", "test": "this"}
+    def my_test(self):
+        """
+        Method help message, {} {class_name}.{object_name}
+        """
+
+
+class HelpMixinTestMultiLine(HelpMixin):
+    """
+    This is line 1
+    This is line 2
+    This is line 3
+    """
+
+    def my_test(self):
+        """
+        Method line 1
+        Method line 2
+        Method line 3
+        """
+        pass
 
 
 class TestHelpMixin(unittest.TestCase):
@@ -24,7 +41,7 @@ class TestHelpMixin(unittest.TestCase):
     def test_help_default_message(self):
         self.assertEqual(
             HelpMixin.HELP_DEFAULT_MESSAGE,
-            "Help is not available for {class_name}."
+            "Help is not available for {object_name}."
         )
 
     def test_help_default_message_custom(self):
@@ -33,67 +50,89 @@ class TestHelpMixin(unittest.TestCase):
             "Hello {class_name}"
         )
 
-    # ----- get_help_text_custom_format
-    def test_get_help_text_custom_format(self):
+    # ----- _help_format
+    def test_help_format_class_name(self):
         self.assertEqual(
-            HelpMixin.get_help_text_custom_format(),
-            ([], {})
+            HelpMixinTestMethod._help_format(
+                "{h}{}{class_name}.{object_name}"
+            ),
+            "{h}{}HelpMixinTestMethod.HelpMixinTestMethod"
         )
 
-    def test_get_help_test_custom_format_override(self):
+    def test_help_format_object_name(self):
         self.assertEqual(
-            HelpMixinTestCustomFormat.get_help_text_custom_format(),
-            (["Best regards"], {"name": "world", "test": "this"})
+            HelpMixinTestMethod._help_format(
+                "{h}{}{class_name}.{object_name}",
+                help_obj=HelpMixinTestMethod.my_test
+            ),
+            "{h}{}HelpMixinTestMethod.my_test"
         )
 
-    # ----- _get_help_text_format
-    def test_get_help_text_format(self):
+    def test_help_format_lambda(self):
         self.assertEqual(
-            HelpMixin._get_help_text_format(),
-            ([], {"class_name": "HelpMixin"})
+            HelpMixinTestMethod._help_format(
+                "{h}{}{class_name}.{object_name}",
+                help_obj=lambda: None
+            ),
+            "{h}{}HelpMixinTestMethod.<lambda>"
         )
 
-    def test_get_help_text_format_custom_format(self):
+    # ----- get_help
+    def test_get_help(self):
         self.assertEqual(
-            HelpMixinTestCustomFormat._get_help_text_format(),
-            (
-                ["Best regards"],
-                {
-                    "class_name": "HelpMixinTestCustomFormat",
-                    "name": "world",
-                    "test": "this"
-                }
-            )
+            HelpMixinTestMethod.help(),
+            "Hello {}, My name is HelpMixinTestMethod"
         )
 
-    # ----- _help_format_text
-    def test_help_format_text(self):
+    def test_get_help_default_message(self):
         self.assertEqual(
-            HelpMixin._help_format_text("Hello, {class_name}"),
-            "Hello, HelpMixin"
-        )
-
-    def test_help_format_index_error(self):
-        self.assertEqual(
-            HelpMixin._help_format_text("Hello {}"),
-            "Hello {}"
-        )
-
-    def test_help_format_key_error(self):
-        self.assertEqual(
-            HelpMixin._help_format_text("Hello {world}"),
-            "Hello {world}"
-        )
-
-    # ----- get_help_class_text
-    def test_get_help_class_text_custom_format(self):
-        self.assertEqual(
-            HelpMixinTestCustomFormat.get_help_class_text(),
-            "Hello, world.  My name is HelpMixinTestCustomFormat. Best regards"
-        )
-
-    def test_get_help_class_text_custom_default_msg(self):
-        self.assertEqual(
-            HelpMixinTestCustomDefaultMsg.get_help_class_text(),
+            HelpMixinTestCustomDefaultMsg.help(),
             "Hello HelpMixinTestCustomDefaultMsg"
+        )
+
+    def test_get_help_method_message(self):
+        self.assertEqual(
+            HelpMixinTestMethod.help(
+                HelpMixinTestMethod.my_test
+            ),
+            "Method help message, {} HelpMixinTestMethod.my_test"
+        )
+
+    # ----- short_help
+    def test_short_help(self):
+        self.assertEqual(
+            HelpMixinTestMultiLine.short_help(),
+            "This is line 1"
+        )
+
+    def test_short_help_2_lines(self):
+        self.assertEqual(
+            HelpMixinTestMultiLine.short_help(help_lines=2),
+            f"This is line 1{os.linesep}This is line 2"
+        )
+
+    def test_short_help_method(self):
+        self.assertEqual(
+            HelpMixinTestMultiLine.short_help(
+                help_obj=HelpMixinTestMultiLine.my_test
+            ),
+            "Method line 1"
+        )
+
+    def test_short_help_method_2_lines(self):
+        self.assertEqual(
+            HelpMixinTestMultiLine.short_help(
+                help_obj=HelpMixinTestMultiLine.my_test,
+                help_lines=2
+            ),
+            f"Method line 1{os.linesep}Method line 2"
+        )
+
+    def test_short_help_help_lines_longer(self):
+        self.assertEqual(
+            HelpMixinTestMultiLine.short_help(
+                help_obj=HelpMixinTestMultiLine.my_test,
+                help_lines=100
+            ),
+            f"Method line 1{os.linesep}Method line 2{os.linesep}Method line 3"
         )

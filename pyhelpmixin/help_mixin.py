@@ -1,75 +1,94 @@
 import inspect
-from typing import Dict, Tuple, List
+import os
+import re
+from typing import Optional
 
 
 class HelpMixin:
     """
-    A MixIn that returns class comments as help text.
+    A MixIn that provides help text by returning an object's comments.
 
-    To return the comments, call get_help_class_text.  This is a class method:
-        MyClass.get_help_class_text() is valid.
+    By default, the class object itself is used for providing help.
 
-    The comments can contain string formatting curly brackets {}.
-        For example:  Hello, {class_name}
-        To add additional variables, override get_help_test_custom_format method
-        NOTE: If an IndexError or KeyError occurs while formatting the string,
-            the Comments are returned as is.  So if the format is not working,
-            validate all positional values and keys are specified.  As the error
-            is trapped and not raised.  Don't want "help" to cause an
-            application to fail.
+    To retrieve the comments as help text, call .help() or .short_help().
+    These are class methods, so you can use MyClass.help() to access them.
+
+    Comments containing {class_name} will be replaced with the current
+        class name.
+    Comments containing {object_name} will be replaced with the name of the
+        object, provided the help_obj argument is passed to
+        .help() or .short_help(), otherwise, it will be replaced with the
+        class name.
     """
 
-    # If class has no comments, this message is used.
+    # If the object has no comments, this message is used.
     # Override for custom default message.
-    HELP_DEFAULT_MESSAGE = "Help is not available for {class_name}."
+    HELP_DEFAULT_MESSAGE: str = "Help is not available for {object_name}."
 
     @classmethod
-    def get_help_text_custom_format(cls) -> Tuple[List[str], Dict[str, str]]:
+    def _help_format(cls,
+                     text: str,
+                     help_obj: Optional[object] = None) -> str:
         """
-        Used to create a custom list and dict to be used as arguments to
-            str.format(*args, **kwargs) of the comments.
-        This list and dict will be merged with the build in mappings.
-            So no need to add "class_name".
+        Replaces {class_name} with the current class name, and
+        replaces {object_name} with the help_obj's name, if it
+        is specified, otherwise, it will be replaced with the class name.
 
-        :return: Returns a tuple of a custom list and dict.
+        :param text: The input text that may contain
+                     {class_name} and {object_name}.
+        :param help_obj: Optional object whose name is used to replace
+                        {object_name}.
+        :return: The text with {class_name} and {object_name} replaced.
         """
-        return [], {}
+
+        # Note:  .format() is not used, because super class may have additional
+        #        fields which would cause IndexError or KeyError.
+        text: str = re.sub(
+            re.escape("{class_name}"),
+            cls.__name__,
+            text
+        )
+        obj: object = help_obj or cls
+        text = re.sub(
+            re.escape("{object_name}"),
+            obj.__name__,
+            text
+        )
+
+        return text
 
     @classmethod
-    def _get_help_text_format(cls) -> Tuple[List[str], Dict[str, str]]:
+    def help(cls, help_obj: Optional[object] = None) -> str:
         """
-        Combines custom formats from cls.get_help_text_custom_format and the
-            default formats to be used as arguments to
-            str.format(*args, **kwargs) of the comments.
+        Retrieve the comments from the help_obj, update the {class_name} and
+        {object_names}, and return them as help message.
 
-        For custom mappings, it is best practice to override
-            get_help_text_custom_format instead of this method.
-
-        :return: Returns a tuple (list, dict) for str.format(*args, **kwargs)
+        :param help_obj: Optional object to pull comments from; the default is
+                         the current class.
+        :return: str: Comments from help_obj with {class_name} and
+                 {object_name} replaced.  If the help_obj has no comments, then
+                 HELP_DEFAULT_MESSAGE is used.
         """
-        format_positional = []
-        format_mappings = {
-            "class_name": cls.__name__,
-        }
-        custom_positional, custom_mappings = cls.get_help_text_custom_format()
-        format_mappings.update(custom_mappings)
+        obj: object = help_obj or cls
+        comments: str = inspect.cleandoc(
+            obj.__doc__ or cls.HELP_DEFAULT_MESSAGE
+        )
+        f_comments: str = cls._help_format(comments, help_obj=help_obj)
 
-        return format_positional + custom_positional, format_mappings
+        return f_comments
 
     @classmethod
-    def _help_format_text(cls, comments: str) -> str:
-        # TODO: Add comments
-        try:
-            positional, mappings = cls._get_help_text_format()
-            formatted_comments = comments.format(*positional, **mappings)
-        except (IndexError, KeyError):
-            formatted_comments = comments
+    def short_help(cls,
+                   help_obj: Optional[object] = None,
+                   help_lines: Optional[int] = None) -> str:
+        """
+        Return the first lines of .help() as specified by help_lines.
 
-        return formatted_comments
-
-    @classmethod
-    def get_help_class_text(cls) -> str:
-        # TODO: Add comments
-        comments = inspect.cleandoc(cls.__doc__ or cls.HELP_DEFAULT_MESSAGE)
-
-        return cls._help_format_text(comments)
+        :param help_obj: See .help().
+        :param help_lines: The number of lines to return from .help();
+                           the default is 1 line.
+        :return: The first lines of .help() as specified by help_lines.
+        """
+        lines: int = help_lines or 1
+        message: str = cls.help(help_obj=help_obj)
+        return os.linesep.join(message.splitlines()[:lines])
