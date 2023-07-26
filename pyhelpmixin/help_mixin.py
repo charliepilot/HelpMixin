@@ -1,6 +1,5 @@
 import inspect
 import os
-import re
 from typing import Optional
 
 
@@ -43,17 +42,9 @@ class HelpMixin:
 
         # Note:  .format() is not used, because super class may have additional
         #        fields which would cause IndexError or KeyError.
-        text: str = re.sub(
-            re.escape("{class_name}"),
-            cls.__name__,
-            text
-        )
+        text = text.replace("{class_name}", cls.__name__)
         obj: object = help_obj or cls
-        text = re.sub(
-            re.escape("{object_name}"),
-            obj.__name__,
-            text
-        )
+        text = text.replace("{object_name}", obj.__name__)
 
         return text
 
