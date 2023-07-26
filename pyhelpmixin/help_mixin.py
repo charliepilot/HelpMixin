@@ -43,7 +43,7 @@ class HelpMixin:
         # Note:  .format() is not used, because super class may have additional
         #        fields which would cause IndexError or KeyError.
         text = text.replace("{class_name}", cls.__name__)
-        obj: object = help_obj or cls
+        obj = help_obj or cls
         text = text.replace("{object_name}", obj.__name__)
 
         return text
@@ -60,11 +60,11 @@ class HelpMixin:
                  {object_name} replaced.  If the help_obj has no comments, then
                  HELP_DEFAULT_MESSAGE is used.
         """
-        obj: object = help_obj or cls
-        comments: str = inspect.cleandoc(
+        obj = help_obj or cls
+        comments = inspect.cleandoc(
             obj.__doc__ or cls.HELP_DEFAULT_MESSAGE
         )
-        f_comments: str = cls._help_format(comments, help_obj=help_obj)
+        f_comments = cls._help_format(comments, help_obj=help_obj)
 
         return f_comments
 
@@ -80,6 +80,6 @@ class HelpMixin:
                            the default is 1 line.
         :return: The first lines of .help() as specified by help_lines.
         """
-        lines: int = help_lines or 1
-        message: str = cls.help(help_obj=help_obj)
+        lines = help_lines or 1
+        message = cls.help(help_obj=help_obj)
         return os.linesep.join(message.splitlines()[:lines])
